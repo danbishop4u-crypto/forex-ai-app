@@ -2,18 +2,17 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
-import time
 from sklearn.ensemble import RandomForestClassifier
+from streamlit_autorefresh import st_autorefresh
 
 # 1. APPLICATION VIEWPORT SETUP
 st.set_page_config(page_title="Real-Time AI Matrix", layout="wide")
 st.title("⚡ Real-Time AI Global Market Prediction Dashboard")
-st.write("Automatically fetches new data streams and refreshes indicator matrices every 10 seconds.")
+st.write("Leverages safe, containerized live-stream ticks to refresh positions without crash errors.")
 
-# --- REAL-TIME REFRESH MECHANISM CONTROL ---
-# Automatically re-runs the entire Python script file on a background timer loop
-st.logo("https://icons8.com")
-time_delay = 10  # Seconds between automated page updates
+# --- SAFE STABLE AUTOMATED REAL-TIME REFRESH TIMER ---
+# Safely forces a silent data refresh every 30 seconds without blowing up memory stack limits
+count = st_autorefresh(interval=30000, limit=1000, key="forex_auto_refresh")
 
 # 2. SELECTION ASSET INVENTORY
 st.sidebar.header("Asset Grid Controls")
@@ -57,12 +56,11 @@ timeframes = {
 
 analysis_vault = {} 
 
-# 3. ADVANCED 8-INDICATOR AI MACHINE LEARNING ENGINE
+# 3. ADVANCED FEATURE CALCULATION SYSTEM
 def run_ai_engine(ticker, interval, period):
     try:
-        # Note: We bypass cached data functions here to guarantee a real-time live download stream
         data = yf.download(tickers=ticker, period=period, interval=interval, group_by='ticker', progress=False)
-        if data.empty or len(data) < 50:
+        if data.empty or len(data) < 45:
             return "N/A (Data Error)", 0.0, 0.00000
         
         if isinstance(data.columns, pd.MultiIndex):
@@ -73,7 +71,7 @@ def run_ai_engine(ticker, interval, period):
         df['High'] = df['High'].squeeze()
         df['Low'] = df['Low'].squeeze()
         
-        # --- NATIVE MULTI-INDICATOR FEATURE CALCULATIONS ---
+        # --- NATIVE MULTI-INDICATOR TRACKING MECHANISMS ---
         df['SMA_20'] = df['Close'].rolling(window=20).mean()
         df['EMA_50'] = df['Close'].ewm(span=50, adjust=False).mean()
         
@@ -128,7 +126,7 @@ def run_ai_engine(ticker, interval, period):
         X_train, X_test = X.iloc[:split_idx], X.iloc[split_idx:]
         y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
         
-        model = RandomForestClassifier(n_estimators=50, random_state=42)
+        model = RandomForestClassifier(n_estimators=30, random_state=42)
         model.fit(X_train, y_train)
         
         accuracy = model.score(X_test, y_test)
@@ -153,17 +151,16 @@ def run_ai_engine(ticker, interval, period):
     except Exception as e:
         return "Error", 0.0, 0.00000
 
-# 4. LIVE VIEW CONTAINER RENDER ENGINE
+# 4. APPLICATION MATRIX DISPLAY
 if not selected_assets:
     st.warning("Please check at least one asset box in the left sidebar menu to compute market data.")
 else:
-    # Visible alert banner flashing the auto update schedule status
-    st.info(f"🔄 **Live Feedback Mode Enabled**: Feed updates dynamically every {time_delay} seconds. No manual clicks required.")
+    st.success(f"⚡ **Stable Streaming Engine Active**: Automated screen refresh loops triggered smoothly every 30s. Iteration Count: `{count}`")
     
     matrix_data = []
     analysis_vault.clear() 
     
-    with st.spinner("Streaming data updates down from API grids..."):
+    with st.spinner("Syncing latest live data streams without server blockages..."):
         for asset in selected_assets:
             row = {"Asset Symbol": display_names[asset]}
             latest_price = 0.00000
@@ -181,12 +178,12 @@ else:
     cols_order = ["Asset Symbol", "Live Price", "1 Minute", "2 Minutes", "5 Minutes", "1 Hour"]
     result_df = result_df[cols_order]
     
-    st.subheader("⚡ Live Advanced AI Technical Signal Matrix")
+    st.subheader("⚡ Stable AI Technical Signal Matrix")
     st.dataframe(result_df, use_container_width=True, hide_index=True)
 
-    # 5. EXPANDED MULTI-INDICATOR STRUCTURAL BREAKDOWN PROFILE
+    # 5. TECHNICAL SUMMARY BLOCKS
     st.markdown("---")
-    st.subheader("📊 Live Indicator Diagnostics (5-Minute Base Chart Profile)")
+    st.subheader("📊 Advanced Indicator Diagnostics (5-Minute Base Chart Profile)")
     
     for asset in selected_assets:
         if asset in analysis_vault:
@@ -198,24 +195,19 @@ else:
                 c1, c2, c3 = st.columns(3)
                 
                 with c1:
-                    st.markdown("**... Channels & Ranges**")
+                    st.markdown("**📉 Channels & Volatility**")
                     st.write(f"* Upper BB: `{metrics['upper_band']:.5f}`")
                     st.write(f"* Lower BB: `{metrics['lower_band']:.5f}`")
-                    st.write(f"* ADX Track: `{metrics['adx']:.1f}` ({adx_status})")
+                    st.write(f"* ADX Strength: `{metrics['adx']:.1f}` ({adx_status})")
                 
                 with c2:
-                    st.markdown("**⚡ Velocity Waves**")
-                    st.write(f"* MACD Cross: `{macd_status}`")
-                    st.write(f"* Stochastic: `{metrics['stoch_k']:.1f}`")
+                    st.markdown("**⚡ Momentum Confluence**")
+                    st.write(f"* MACD: `{macd_status}`")
+                    st.write(f"* Stochastic Wave: `{metrics['stoch_k']:.1f}`")
                     st.write(f"* CCI Track: `{metrics['cci']:.1f}`")
                     
                 with c3:
-                    st.markdown("**🚧 Static Floors/Ceilings**")
+                    st.markdown("**🚧 Structural Key Marks**")
                     st.write(f"* RSI (14P): `{metrics['rsi']:.1f}`")
-                    st.write(f"* Local Floor: `{metrics['support']:.5f}`")
-                    st.write(f"* Local Ceiling: `{metrics['resistance']:.5f}`")
-
-    # --- TIME TRIGGER ELEMENT LOOP ---
-    # Pauses thread briefly before executing page reload instruction
-    time.sleep(time_delay)
-    st.rerun()
+                    st.write(f"* Local Support Floor: `{metrics['support']:.5f}`")
+                    st.write(f"* Local Resistance Ceiling: `{metrics['resistance']:.5f}`")
