@@ -1,12 +1,13 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
+import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 
 # 1. APPLICATION VIEWPORT SETUP
 st.set_page_config(page_title="AI Multi-Asset Scanner", layout="wide")
 st.title("🎛️ AI Global Market Multi-Pair & Multi-Timeframe Dashboard")
-st.write("Simultaneously processes machine learning trend predictions across worldwide asset networks.")
+st.write("Simultaneously processes machine learning trend predictions and structural market mechanics.")
 
 # 2. EXPANDED SELECTION ASSET INVENTORY 
 st.sidebar.header("Asset Grid Controls")
@@ -48,7 +49,9 @@ timeframes = {
     "1 Day": {"interval": "1d", "period": "1y"}
 }
 
-# 3. AUTOMATED LOGIC PREDICTIVE COMPUTATION ENGINE
+# 3. GLOBAL CORE ANALYTICS COMPUTATION CONTAINER
+analysis_vault = {} # Safely houses generated math stats for the summary block below
+
 def run_ai_engine(ticker, interval, period):
     try:
         data = yf.download(tickers=ticker, period=period, interval=interval, group_by='ticker', progress=False)
@@ -60,7 +63,10 @@ def run_ai_engine(ticker, interval, period):
             
         df = pd.DataFrame(data)
         df['Close'] = df['Close'].squeeze()
+        df['High'] = df['High'].squeeze()
+        df['Low'] = df['Low'].squeeze()
         
+        # Core Technical Calculations
         df['SMA_20'] = df['Close'].rolling(window=20).mean()
         df['EMA_50'] = df['Close'].ewm(span=50, adjust=False).mean()
         
@@ -70,6 +76,7 @@ def run_ai_engine(ticker, interval, period):
         rs = gain / (loss + 1e-10)
         df['RSI'] = 100 - (100 / (1 + rs))
         
+        # ML Engine Target Allocation
         df['Target'] = (df['Close'].shift(-1) > df['Close']).astype(int)
         df_ml = df.dropna().copy()
         
@@ -90,6 +97,22 @@ def run_ai_engine(ticker, interval, period):
         accuracy = model.score(X_test, y_test)
         prediction = model.predict(X.iloc[[-1]])
         
+        # EXTRACT LIVE VOLATILITY AND STRUCTURE (FOR 1-HOUR STANDARDIZATION)
+        if interval == "1h" and ticker not in analysis_vault:
+            # Average True Range (ATR) approximation for volatility tracking
+            high_low = df['High'] - df['Low']
+            atr_sim = high_low.rolling(14).mean().iloc[-1]
+            pct_vol = (atr_sim / df['Close'].iloc[-1]) * 100
+            
+            analysis_vault[ticker] = {
+                "rsi": df['RSI'].iloc[-1],
+                "sma20": df['SMA_20'].iloc[-1],
+                "ema50": df['EMA_50'].iloc[-1],
+                "support": df['Low'].tail(30).min(),
+                "resistance": df['High'].tail(30).max(),
+                "volatility": "🚨 HIGH" if pct_vol > 0.15 else "🟢 LOW" if pct_vol < 0.05 else "📊 MEDIUM"
+            }
+            
         signal = "🚀 BUY" if prediction == 1 else "🩸 SELL"
         return f"{signal} ({accuracy * 100:.0f}% Acc)", accuracy, df['Close'].iloc[-1]
     except Exception as e:
@@ -98,6 +121,7 @@ def run_ai_engine(ticker, interval, period):
 # 4. TOP REFRESH BUTTON ACTION
 if st.button("🔄 Refresh Data (Top)", key="btn_top", use_container_width=True):
     st.cache_data.clear()
+    analysis_vault.clear() # clear analytics
     st.toast("Fetching latest live market candles...", icon="⚡")
 
 # 5. APPLICATION MATRIX DISPLAY
@@ -105,6 +129,7 @@ if not selected_assets:
     st.warning("Please check at least one asset box in the left sidebar menu to compute market data.")
 else:
     matrix_data = []
+    analysis_vault.clear() # clear storage cache before fresh iteration loops
     
     with st.spinner("Processing AI probability algorithms across global markets..."):
         for asset in selected_assets:
@@ -127,8 +152,48 @@ else:
     st.subheader("Live Global Market AI Engine Dashboard Matrix")
     st.dataframe(result_df, use_container_width=True, hide_index=True)
 
-    # 6. BOTTOM REFRESH BUTTON ACTION
+    # 6. EXPANDED STRUCTURAL MARKET ANALYSIS MODULE
+    st.markdown("---")
+    st.subheader("📊 Live Market Structural Analysis Breakdown (1-Hour Chart Profile)")
+    
+    for asset in selected_assets:
+        if asset in analysis_vault:
+            metrics = analysis_vault[asset]
+            price_now = float([m["Live Market Price"] for m in matrix_data if m["Asset Symbol"] == display_names[asset]][0])
+            
+            # Formulate mathematical market bias
+            if metrics["rsi"] > 65:
+                bias = "🔥 STRONGLY OVERBOUGHT (Look for reversal / exhaustion)"
+            elif metrics["rsi"] < 35:
+                bias = "❄️ STRONGLY OVERSOLD (Look for support bounces)"
+            elif price_now > metrics["ema50"]:
+                bias = "📈 MACRO BULLISH CONTINUATION (Price tracking above 50 EMA)"
+            else:
+                bias = "📉 MACRO BEARISH CONTINUATION (Price tracking below 50 EMA)"
+                
+            # Render individual clean interface grid blocks for mobile reading
+            with st.expander(f"👁️ Analytical Deep-Dive: {display_names[asset]}"):
+                c1, c2, c3 = st.columns(3)
+                
+                with c1:
+                    st.markdown("**📊 Current Market Bias**")
+                    st.write(bias)
+                    st.markdown(f"**⚡ Volatility Signature:** `{metrics['volatility']}`")
+                
+                with c2:
+                    st.markdown("**🚧 Key Structural Horizons**")
+                    st.markdown(f"* **Ceiling (Resistance Zone):** `{metrics['resistance']:.5f}`")
+                    st.markdown(f"* **Floor (Support Zone):** `{metrics['support']:.5f}`")
+                    
+                with c3:
+                    st.markdown("**📈 Pure Oscillator Telemetry**")
+                    st.write(f"* **RSI (14 Period):** `{metrics['rsi']:.1f}`")
+                    st.write(f"* **Short Trend (20 SMA):** `{metrics['sma20']:.5f}`")
+                    st.write(f"* **Base Trend (50 EMA):** `{metrics['ema50']:.5f}`")
+
+    # 7. BOTTOM REFRESH BUTTON ACTION
     st.markdown("---")
     if st.button("🔄 Refresh Data (Bottom)", key="btn_bottom", use_container_width=True):
         st.cache_data.clear()
+        analysis_vault.clear()
         st.toast("Fetching latest live market candles...", icon="⚡")
