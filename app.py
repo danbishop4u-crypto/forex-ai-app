@@ -2,71 +2,133 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-import plotly.graph_objects as go
 
-st.set_page_config(page_title="AI Forex Engine", layout="wide")
-st.title("🤖 AI Forex Market Analyzer")
+# 1. APPLICATION VIEWPORT SETUP
+st.set_page_config(page_title="AI Multi-Asset Scanner", layout="wide")
+st.title("🎛️ AI Global Market Multi-Pair & Multi-Timeframe Dashboard")
+st.write("Simultaneously processes machine learning trend predictions across worldwide asset networks.")
 
-st.sidebar.header("Parameters")
-ticker_input = st.sidebar.selectbox("Currency Pair", ["EURUSD=X", "GBPUSD=X", "USDJPY=X"])
-time_period = st.sidebar.selectbox("Lookback", ["60d", "1mo", "3mo"])
-time_interval = st.sidebar.selectbox("Interval", ["5m", "15m", "1h", "1d"])
+# 2. EXPANDED SELECTION ASSET INVENTORY 
+st.sidebar.header("Asset Grid Controls")
 
-@st.cache_data(ttl=60)
-def load_forex_data(ticker, period, interval):
-    data = yf.download(tickers=ticker, period=period, interval=interval, group_by='ticker')
-    if isinstance(data.columns, pd.MultiIndex):
-        data.columns = data.columns.droplevel(0)
-    return pd.DataFrame(data)
+asset_catalog = {
+    "🔱 Precious Metals & Crypto": ["GC=F", "SI=F", "BTC-USD"],
+    "🔥 Major Currency Pairs": ["EURUSD=X", "GBPUSD=X", "USDJPY=X", "AUDUSD=X", "USDCAD=X", "USDCHF=X"],
+    "📈 Minor & Exotic Pairs": ["EURGBP=X", "EURJPY=X", "GBPJPY=X", "USDZAR=X"]
+}
 
-df = load_forex_data(ticker_input, time_period, time_interval)
+display_names = {
+    "GC=F": "XAU/USD (Gold Spot)",
+    "SI=F": "XAG/USD (Silver Spot)",
+    "BTC-USD": "BTC/USD (Bitcoin)",
+    "EURUSD=X": "EUR/USD (Euro / Dollar)",
+    "GBPUSD=X": "GBP/USD (Pound / Dollar)",
+    "USDJPY=X": "USD/JPY (Dollar / Yen)",
+    "AUDUSD=X": "AUD/USD (Aussie / Dollar)",
+    "USDCAD=X": "USD/CAD (Loonie / Dollar)",
+    "USDCHF=X": "USD/CHF (Swiss / Dollar)",
+    "EURGBP=X": "EUR/GBP (Euro / Pound)",
+    "EURJPY=X": "EUR/JPY (Euro / Yen)",
+    "GBPJPY=X": "GBP/JPY (Pound / Yen)",
+    "USDZAR=X": "USD/ZAR (Dollar / Rand)"
+}
 
-if df.empty or len(df) < 30:
-    st.error("Data error. Try a larger lookback period in the sidebar.")
-else:
-    # Standardize column structures
-    df['Close'] = df['Close'].squeeze()
-    df['High'] = df['High'].squeeze()
-    df['Low'] = df['Low'].squeeze()
-    df['Open'] = df['Open'].squeeze()
-    
-    # CALCULATE INDICATORS NATIVELY (No dependencies needed)
-    # 1. Simple Moving Average (SMA)
-    df['SMA_20'] = df['Close'].rolling(window=20).mean()
-    
-    # 2. Exponential Moving Average (EMA)
-    df['EMA_50'] = df['Close'].ewm(span=50, adjust=False).mean()
-    
-    # 3. Relative Strength Index (RSI)
-    delta = df['Close'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-    rs = gain / (loss + 1e-10) # avoid division by zero
-    df['RSI'] = 100 - (100 / (1 + rs))
-    
-    # Establish Target Direction Setup
-    df['Target'] = (df['Close'].shift(-1) > df['Close']).astype(int)
-    df_ml = df.dropna().copy()
-    
-    features = ['RSI', 'SMA_20', 'EMA_50']
-    X = df_ml[features]
-    y = df_ml['Target']
-    
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
-    model = RandomForestClassifier(n_estimators=50, random_state=42)
-    model.fit(X_train, y_train)
-    
-    accuracy = model.score(X_test, y_test)
-    prediction = model.predict(X.iloc[[-1]])
-    
-    col1, col2 = st.columns(2)
-    col1.metric("Live Price", f"{df['Close'].iloc[-1]:.5f}")
-    col2.metric("Model Accuracy", f"{accuracy * 100:.1f}%")
-    
-    if prediction == 1:
-        st.success("🤖 AI SIGNAL: BULLISH (BUY TARGET)")
-    else:
-        st.error("🤖 AI SIGNAL: BEARISH (SELL TARGET)")
+selected_assets = []
+for category, items in asset_catalog.items():
+    st.sidebar.markdown(f"### {category}")
+    for item in items:
+        default_checked = (item in ["GC=F", "EURUSD=X"])
+        if st.sidebar.checkbox(f"Add {display_names[item]}", value=default_checked, key=f"side_{item}"):
+            selected_assets.append(item)
+
+timeframes = {
+    "5 Minutes": {"interval": "5m", "period": "5d"},
+    "15 Minutes": {"interval": "15m", "period": "14d"},
+    "1 Hour": {"interval": "1h", "period": "60d"},
+    "1 Day": {"interval": "1d", "period": "1y"}
+}
+
+# 3. AUTOMATED LOGIC PREDICTIVE COMPUTATION ENGINE
+def run_ai_engine(ticker, interval, period):
+    try:
+        data = yf.download(tickers=ticker, period=period, interval=interval, group_by='ticker', progress=False)
+        if data.empty or len(data) < 35:
+            return "N/A (Data Error)", 0.0, 0.00000
         
-    st.info("App successfully updated and running smoothly.")
+        if isinstance(data.columns, pd.MultiIndex):
+            data.columns = data.columns.droplevel(0)
+            
+        df = pd.DataFrame(data)
+        df['Close'] = df['Close'].squeeze()
+        
+        df['SMA_20'] = df['Close'].rolling(window=20).mean()
+        df['EMA_50'] = df['Close'].ewm(span=50, adjust=False).mean()
+        
+        delta = df['Close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / (loss + 1e-10)
+        df['RSI'] = 100 - (100 / (1 + rs))
+        
+        df['Target'] = (df['Close'].shift(-1) > df['Close']).astype(int)
+        df_ml = df.dropna().copy()
+        
+        if len(df_ml) < 10:
+            return "N/A (Data Error)", 0.0, df['Close'].iloc[-1]
+            
+        features = ['RSI', 'SMA_20', 'EMA_50']
+        X = df_ml[features]
+        y = df_ml['Target']
+        
+        split_idx = int(len(X) * 0.8)
+        X_train, X_test = X.iloc[:split_idx], X.iloc[split_idx:]
+        y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
+        
+        model = RandomForestClassifier(n_estimators=30, random_state=42)
+        model.fit(X_train, y_train)
+        
+        accuracy = model.score(X_test, y_test)
+        prediction = model.predict(X.iloc[[-1]])
+        
+        signal = "🚀 BUY" if prediction == 1 else "🩸 SELL"
+        return f"{signal} ({accuracy * 100:.0f}% Acc)", accuracy, df['Close'].iloc[-1]
+    except Exception as e:
+        return "Error", 0.0, 0.00000
+
+# 4. TOP REFRESH BUTTON ACTION
+if st.button("🔄 Refresh Data (Top)", key="btn_top", use_container_width=True):
+    st.cache_data.clear()
+    st.toast("Fetching latest live market candles...", icon="⚡")
+
+# 5. APPLICATION MATRIX DISPLAY
+if not selected_assets:
+    st.warning("Please check at least one asset box in the left sidebar menu to compute market data.")
+else:
+    matrix_data = []
+    
+    with st.spinner("Processing AI probability algorithms across global markets..."):
+        for asset in selected_assets:
+            row = {"Asset Symbol": display_names[asset]}
+            latest_price = 0.00000
+            
+            for tf_name, tf_params in timeframes.items():
+                result_str, acc, price = run_ai_engine(asset, tf_params["interval"], tf_params["period"])
+                row[tf_name] = result_str
+                if price > 0:
+                    latest_price = price
+                    
+            row["Live Market Price"] = f"{latest_price:.5f}" if latest_price > 0 else "Offline"
+            matrix_data.append(row)
+            
+    result_df = pd.DataFrame(matrix_data)
+    cols_order = ["Asset Symbol", "Live Market Price", "5 Minutes", "15 Minutes", "1 Hour", "1 Day"]
+    result_df = result_df[cols_order]
+    
+    st.subheader("Live Global Market AI Engine Dashboard Matrix")
+    st.dataframe(result_df, use_container_width=True, hide_index=True)
+
+    # 6. BOTTOM REFRESH BUTTON ACTION
+    st.markdown("---")
+    if st.button("🔄 Refresh Data (Bottom)", key="btn_bottom", use_container_width=True):
+        st.cache_data.clear()
+        st.toast("Fetching latest live market candles...", icon="⚡")
