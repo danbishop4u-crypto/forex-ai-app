@@ -5,11 +5,11 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 
 # 1. APPLICATION VIEWPORT SETUP
-st.set_page_config(page_title="AI Hyper-Scalper Engine", layout="wide")
-st.title("⚡ AI Global Market Hyper-Scalper Multi-Timeframe Dashboard")
-st.write("Simultaneously processes real-time machine learning predictions across micro-scalping intervals.")
+st.set_page_config(page_title="AI Predictive Matrix", layout="wide")
+st.title("🎛️ AI Global Market Advanced Multi-Indicator Prediction Dashboard")
+st.write("Leverages 5 technical indicator dimensions to feed the machine learning trend engine.")
 
-# 2. EXPANDED SELECTION ASSET INVENTORY 
+# 2. SELECTION ASSET INVENTORY
 st.sidebar.header("Asset Grid Controls")
 
 asset_catalog = {
@@ -42,21 +42,21 @@ for category, items in asset_catalog.items():
         if st.sidebar.checkbox(f"Add {display_names[item]}", value=default_checked, key=f"side_{item}"):
             selected_assets.append(item)
 
-# HYPER-SCALPING TIMEFRAME INTERVALS (Requires a maximum of 30 days lookback for 1m-5m charts)
+# Timeframes setup optimized for deep lookbacks
 timeframes = {
     "1 Minute": {"interval": "1m", "period": "1d"},
     "2 Minutes": {"interval": "2m", "period": "1d"},
-    "3 Minutes": {"interval": "3m", "period": "1d"},
-    "5 Minutes": {"interval": "5m", "period": "5d"}
+    "5 Minutes": {"interval": "5m", "period": "5d"},
+    "1 Hour": {"interval": "1h", "period": "60d"}
 }
 
-# 3. GLOBAL CORE ANALYTICS COMPUTATION CONTAINER
 analysis_vault = {} 
 
+# 3. ADVANCED FIVE-INDICATOR AI MACHINE LEARNING ENGINE
 def run_ai_engine(ticker, interval, period):
     try:
         data = yf.download(tickers=ticker, period=period, interval=interval, group_by='ticker', progress=False)
-        if data.empty or len(data) < 35:
+        if data.empty or len(data) < 40:
             return "N/A (Data Error)", 0.0, 0.00000
         
         if isinstance(data.columns, pd.MultiIndex):
@@ -67,24 +67,41 @@ def run_ai_engine(ticker, interval, period):
         df['High'] = df['High'].squeeze()
         df['Low'] = df['Low'].squeeze()
         
-        # Fast Technical Calculations for Scalping
-        df['SMA_10'] = df['Close'].rolling(window=10).mean() # Faster trend line
-        df['EMA_25'] = df['Close'].ewm(span=25, adjust=False).mean() # Faster base line
+        # --- NATIVE MULTI-INDICATOR FEATURE CALCULATIONS ---
+        # Indicator 1: Simple Moving Average (SMA)
+        df['SMA_20'] = df['Close'].rolling(window=20).mean()
         
+        # Indicator 2: Exponential Moving Average (EMA)
+        df['EMA_50'] = df['Close'].ewm(span=50, adjust=False).mean()
+        
+        # Indicator 3: Relative Strength Index (RSI)
         delta = df['Close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
         rs = gain / (loss + 1e-10)
         df['RSI'] = 100 - (100 / (1 + rs))
         
-        # ML Engine Target Allocation
+        # Indicator 4: Moving Average Convergence Divergence (MACD)
+        ema_12 = df['Close'].ewm(span=12, adjust=False).mean()
+        ema_26 = df['Close'].ewm(span=26, adjust=False).mean()
+        df['MACD_Line'] = ema_12 - ema_26
+        df['MACD_Signal'] = df['MACD_Line'].ewm(span=9, adjust=False).mean()
+        
+        # Indicator 5: Bollinger Bands (Volatility & Target Envelopes)
+        std_dev = df['Close'].rolling(window=20).std()
+        df['BB_Upper'] = df['SMA_20'] + (std_dev * 2)
+        df['BB_Lower'] = df['SMA_20'] - (std_dev * 2)
+        # ---------------------------------------------------
+        
+        # Define prediction logic boundaries
         df['Target'] = (df['Close'].shift(-1) > df['Close']).astype(int)
         df_ml = df.dropna().copy()
         
-        if len(df_ml) < 10:
+        if len(df_ml) < 15:
             return "N/A (Data Error)", 0.0, df['Close'].iloc[-1]
             
-        features = ['RSI', 'SMA_10', 'EMA_25']
+        # Expanded Features Feeding Module
+        features = ['RSI', 'SMA_20', 'EMA_50', 'MACD_Line', 'MACD_Signal', 'BB_Upper', 'BB_Lower']
         X = df_ml[features]
         y = df_ml['Target']
         
@@ -92,25 +109,23 @@ def run_ai_engine(ticker, interval, period):
         X_train, X_test = X.iloc[:split_idx], X.iloc[split_idx:]
         y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
         
-        model = RandomForestClassifier(n_estimators=35, random_state=42)
+        # Random Forest initialized with expanded features metrics
+        model = RandomForestClassifier(n_estimators=50, random_state=42)
         model.fit(X_train, y_train)
         
         accuracy = model.score(X_test, y_test)
         prediction = model.predict(X.iloc[[-1]])
         
-        # EXTRACT LIVE MICRO-VOLATILITY AND STRUCTURE (FOR 5-MINUTE CHART)
+        # Map parameters for structural visualization modules
         if interval == "5m" and ticker not in analysis_vault:
-            high_low = df['High'] - df['Low']
-            atr_sim = high_low.rolling(14).mean().iloc[-1]
-            pct_vol = (atr_sim / df['Close'].iloc[-1]) * 100
-            
             analysis_vault[ticker] = {
                 "rsi": df['RSI'].iloc[-1],
-                "sma10": df['SMA_10'].iloc[-1],
-                "ema25": df['EMA_25'].iloc[-1],
-                "support": df['Low'].tail(20).min(), # Recent 20-candle floor
-                "resistance": df['High'].tail(20).max(), # Recent 20-candle ceiling
-                "volatility": "🚨 HIGH (Fast Moves)" if pct_vol > 0.08 else "🟢 LOW (Calm Market)" if pct_vol < 0.03 else "📊 MEDIUM"
+                "macd": df['MACD_Line'].iloc[-1],
+                "macd_sig": df['MACD_Signal'].iloc[-1],
+                "upper_band": df['BB_Upper'].iloc[-1],
+                "lower_band": df['BB_Lower'].iloc[-1],
+                "support": df['Low'].tail(25).min(),
+                "resistance": df['High'].tail(25).max()
             }
             
         signal = "🚀 BUY" if prediction == 1 else "🩸 SELL"
@@ -119,10 +134,10 @@ def run_ai_engine(ticker, interval, period):
         return "Error", 0.0, 0.00000
 
 # 4. TOP REFRESH BUTTON ACTION
-if st.button("🔄 Refresh Scalper Data (Top)", key="btn_top", use_container_width=True):
+if st.button("🔄 Refresh Data (Top)", key="btn_top", use_container_width=True):
     st.cache_data.clear()
     analysis_vault.clear() 
-    st.toast("Fetching latest live price ticks...", icon="⚡")
+    st.toast("Re-calculating predictions using 5 indicators...", icon="⚡")
 
 # 5. APPLICATION MATRIX DISPLAY
 if not selected_assets:
@@ -131,7 +146,7 @@ else:
     matrix_data = []
     analysis_vault.clear() 
     
-    with st.spinner("Processing AI scalp patterns across micro-intervals..."):
+    with st.spinner("Processing deep multi-indicator AI models..."):
         for asset in selected_assets:
             row = {"Asset Symbol": display_names[asset]}
             latest_price = 0.00000
@@ -146,56 +161,47 @@ else:
             matrix_data.append(row)
             
     result_df = pd.DataFrame(matrix_data)
-    cols_order = ["Asset Symbol", "Live Price", "1 Minute", "2 Minutes", "3 Minutes", "5 Minutes"]
+    cols_order = ["Asset Symbol", "Live Price", "1 Minute", "2 Minutes", "5 Minutes", "1 Hour"]
     result_df = result_df[cols_order]
     
-    st.subheader("⚡ Live Hyper-Scalping AI Signal Matrix")
+    st.subheader("⚡ Advanced AI Technical Signal Matrix")
     st.dataframe(result_df, use_container_width=True, hide_index=True)
 
-    # 6. EXPANDED MICRO STRUCTURAL MARKET ANALYSIS MODULE
+    # 6. EXPANDED MULTI-INDICATOR STRUCTURAL BREAKDOWN PROFILE
     st.markdown("---")
-    st.subheader("📊 Scalping Structural Profile (5-Minute Base Chart)")
+    st.subheader("📊 Advanced Indicator Diagnostics (5-Minute Base Chart Profile)")
     
     for asset in selected_assets:
         if asset in analysis_vault:
             metrics = analysis_vault[asset]
             
-            try:
-                price_now = float([m["Live Price"] for m in matrix_data if m["Asset Symbol"] == display_names[asset]][0])
-            except:
-                price_now = 0.0
-                
-            if metrics["rsi"] > 70:
-                bias = "🔥 SCALP OVERBOUGHT (Extreme momentum, high risk to buy)"
-            elif metrics["rsi"] < 30:
-                bias = "❄️ SCALP OVERSOLD (Extreme oversold, look for immediate long scalps)"
-            elif price_now > metrics["ema25"]:
-                bias = "📈 MICRO BULLISH BIAS (Price trading above fast 25 EMA)"
-            else:
-                bias = "📉 MICRO BEARISH BIAS (Price trading below fast 25 EMA)"
-                
-            with st.expander(f"👁️ Scalping Dashboard Summary: {display_names[asset]}"):
+            # Complex Confluence Indicator Engine Definition
+            macd_status = "📈 Bullish Cross" if metrics["macd"] > metrics["macd_sig"] else "📉 Bearish Cross"
+            
+            with st.expander(f"👁️ Advanced Diagnostics Summary: {display_names[asset]}"):
                 c1, c2, c3 = st.columns(3)
                 
                 with c1:
-                    st.markdown("**📊 Execution Bias**")
-                    st.write(bias)
-                    st.markdown(f"**⚡ Micro Volatility:** `{metrics['volatility']}`")
+                    st.markdown("**📉 Moving Average Envelopes**")
+                    st.write(f"* **Upper Bollinger Band Ceiling:** `{metrics['upper_band']:.5f}`")
+                    st.write(f"* **Lower Bollinger Band Floor:** `{metrics['lower_band']:.5f}`")
+                    st.write(f" *Bollinger Bands map instant over-extension levels.*")
                 
                 with c2:
-                    st.markdown("**🚧 Scalping Targets**")
-                    st.markdown(f"* **Immediate Ceiling (Resistance):** `{metrics['resistance']:.5f}`")
-                    st.markdown(f"* **Immediate Floor (Support):** `{metrics['support']:.5f}`")
+                    st.markdown("**⚡ Momentum Confluence**")
+                    st.write(f"* **MACD Momentum Status:** `{macd_status}`")
+                    st.write(f"* **MACD Value:** `{metrics['macd']:.6f}`")
+                    st.write(f"* **MACD Signal Line:** `{metrics['macd_sig']:.6f}`")
                     
                 with c3:
-                    st.markdown("**📈 Scalper Indicators**")
-                    st.write(f"* **Fast RSI (14 Candles):** `{metrics['rsi']:.1f}`")
-                    st.write(f"* **Micro Trend (10 SMA):** `{metrics['sma10']:.5f}`")
-                    st.write(f"* **Base Scalp (25 EMA):** `{metrics['ema25']:.5f}`")
+                    st.markdown("**🚧 Core Oscillation Data**")
+                    st.write(f"* **RSI (14 Candles):** `{metrics['rsi']:.1f}`")
+                    st.write(f"* **Structural Support Floor:** `{metrics['support']:.5f}`")
+                    st.write(f"* **Structural Resistance Ceiling:** `{metrics['resistance']:.5f}`")
 
     # 7. BOTTOM REFRESH BUTTON ACTION
     st.markdown("---")
-    if st.button("🔄 Refresh Scalper Data (Bottom)", key="btn_bottom", use_container_width=True):
+    if st.button("🔄 Refresh Data (Bottom)", key="btn_bottom", use_container_width=True):
         st.cache_data.clear()
         analysis_vault.clear()
-        st.toast("Fetching latest live price ticks...", icon="⚡")
+        st.toast("Re-calculating predictions using 5 indicators...", icon="⚡")
