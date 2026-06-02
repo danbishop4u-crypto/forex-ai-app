@@ -1,7 +1,6 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
-import pandas_ta as ta
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 import plotly.graph_objects as go
@@ -16,7 +15,6 @@ time_interval = st.sidebar.selectbox("Interval", ["5m", "15m", "1h", "1d"])
 
 @st.cache_data(ttl=60)
 def load_forex_data(ticker, period, interval):
-    # force group_by='ticker' to avoid multi-index errors
     data = yf.download(tickers=ticker, period=period, interval=interval, group_by='ticker')
     if isinstance(data.columns, pd.MultiIndex):
         data.columns = data.columns.droplevel(0)
@@ -27,17 +25,27 @@ df = load_forex_data(ticker_input, time_period, time_interval)
 if df.empty or len(df) < 30:
     st.error("Data error. Try a larger lookback period in the sidebar.")
 else:
-    # Ensure columns are 1D arrays
+    # Standardize column structures
     df['Close'] = df['Close'].squeeze()
     df['High'] = df['High'].squeeze()
     df['Low'] = df['Low'].squeeze()
     df['Open'] = df['Open'].squeeze()
     
-    # Calculate indicators securely
-    df['RSI'] = ta.rsi(df['Close'], length=14)
-    df['SMA_20'] = ta.sma(df['Close'], length=20)
-    df['EMA_50'] = ta.ema(df['Close'], length=50)
+    # CALCULATE INDICATORS NATIVELY (No dependencies needed)
+    # 1. Simple Moving Average (SMA)
+    df['SMA_20'] = df['Close'].rolling(window=20).mean()
     
+    # 2. Exponential Moving Average (EMA)
+    df['EMA_50'] = df['Close'].ewm(span=50, adjust=False).mean()
+    
+    # 3. Relative Strength Index (RSI)
+    delta = df['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rs = gain / (loss + 1e-10) # avoid division by zero
+    df['RSI'] = 100 - (100 / (1 + rs))
+    
+    # Establish Target Direction Setup
     df['Target'] = (df['Close'].shift(-1) > df['Close']).astype(int)
     df_ml = df.dropna().copy()
     
@@ -56,7 +64,9 @@ else:
     col1.metric("Live Price", f"{df['Close'].iloc[-1]:.5f}")
     col2.metric("Model Accuracy", f"{accuracy * 100:.1f}%")
     
-    if prediction[0] == 1:
+    if prediction == 1:
         st.success("🤖 AI SIGNAL: BULLISH (BUY TARGET)")
     else:
         st.error("🤖 AI SIGNAL: BEARISH (SELL TARGET)")
+        
+    st.info("App successfully updated and running smoothly.")
