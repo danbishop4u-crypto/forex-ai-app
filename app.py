@@ -187,26 +187,21 @@ else:
         
         bot_response = ""
         matched = False
-        query_clean = user_query.lower().replace("/", "").replace(" ", "").replace("-", "")
+        q_clean = user_query.lower().replace("/", "").replace(" ", "").replace("-", "")
         
         # Upgraded fuzzy matcher strings to map user entry fields perfectly
         for key, name in display_names.items():
-            key_clean = key.lower().replace("=x", "").replace("-", "")
+            k_clean = key.lower().replace("=x", "").replace("-", "")
             
-            # Match rules checking system
-            is_match = (
-                key_clean in query_clean or 
-                "gold" in query_clean and key == "GC=F" or 
-                "xau" in query_clean and key == "GC=F" or
-                "silver" in query_clean and key == "SI=F" or
-                "xag" in query_clean and key == "SI=F" or
-                "bitcoin" in query_clean and key == "BTC-USD" or
-                "btc" in query_clean and key == "BTC-USD" or
-                "eur" in query_clean and "usd" in query_clean and key == "EURUSD=X" or
-                "gbp" in query_clean and "usd" in query_clean and key == "GBPUSD=X"
-            )
+            # Formulate strict linear Boolean evaluation flags to secure formatting alignment
+            is_gold = ("gold" in q_clean or "xau" in q_clean) and key == "GC=F"
+            is_silver = ("silver" in q_clean or "xag" in q_clean) and key == "SI=F"
+            is_btc = ("bitcoin" in q_clean or "btc" in q_clean) and key == "BTC-USD"
+            is_eurusd = ("eur" in q_clean and "usd" in q_clean) and key == "EURUSD=X"
+            is_gbpusd = ("gbp" in q_clean and "usd" in q_clean) and key == "GBPUSD=X"
+            is_raw_key = k_clean in q_clean
             
-            if is_match:
+            if is_gold or is_silver or is_btc or is_eurusd or is_gbpusd or is_raw_key:
                 matched = True
                 if key in st.session_state.analysis_vault:
                     m = st.session_state.analysis_vault[key]
