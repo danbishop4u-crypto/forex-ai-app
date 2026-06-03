@@ -2,18 +2,17 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
-import time
 from sklearn.ensemble import RandomForestClassifier
 from streamlit_autorefresh import st_autorefresh
 
 # 1. LIVE APPLICATION FRAMEWORK SETUP
-st.set_page_config(page_title="True Real-Time AI Scanner", layout="wide")
-st.title("⚡ True Real-Time AI Global Forex Scanner")
-st.write("Streaming high-frequency market data. System recalculates predictions every 2 seconds.")
+st.set_page_config(page_title="1-Min AI Scanner", layout="wide")
+st.title("⚡ 1-Minute AI Global Market Scanner")
+st.write("System streams real-time market changes and recalculates predictions every 60 seconds.")
 
-# --- TRUE REAL-TIME HIGH FREQUENCY TIMER ---
-# Triggers a seamless frontend data redraw every 2000 milliseconds (2 seconds)
-refresh_counter = st_autorefresh(interval=2000, limit=5000, key="realtime_forex_stream")
+# --- MINUTE AUTOMATED REFRESH TIMER ---
+# Triggers a clean, stable interface data rewrite every 60000ms (1 Minute)
+refresh_counter = st_autorefresh(interval=60000, limit=5000, key="one_minute_forex_stream")
 
 # 2. SELECTION ASSET INVENTORY
 st.sidebar.header("Live Asset Allocation")
@@ -48,7 +47,7 @@ for category, items in asset_catalog.items():
         if st.sidebar.checkbox(f"Add {display_names[item]}", value=default_checked, key=f"side_{item}"):
             selected_assets.append(item)
 
-# Focused real-time execution intervals
+# Focused technical execution intervals
 timeframes = {
     "1 Minute": {"interval": "1m", "period": "1d"},
     "5 Minutes": {"interval": "5m", "period": "5d"},
@@ -63,7 +62,6 @@ if "chat_history" not in st.session_state:
 # 3. STREAMING DATA INGESTION ENGINE
 def run_realtime_engine(ticker, interval, period):
     try:
-        # Bypassing Streamlit caching entirely to force a real-time HTTP fetch on every single refresh pulse
         data = yf.download(tickers=ticker, period=period, interval=interval, group_by='ticker', progress=False)
         if data.empty or len(data) < 40:
             return "⏳ Streaming...", 0.0, 0.00000
@@ -119,7 +117,7 @@ def run_realtime_engine(ticker, interval, period):
         else:
             signal = "🚀 BUY" if raw_pred == 1 else "🩸 SELL"
         
-        # Commit live values into the database container block
+        # Commit live values into database container
         if interval == "5m":
             st.session_state.analysis_vault[ticker] = {
                 "signal": signal,
@@ -138,13 +136,11 @@ def run_realtime_engine(ticker, interval, period):
 if not selected_assets:
     st.warning("Please check at least one asset box in the left sidebar menu to compute market data.")
 else:
-    # Top metrics row displaying telemetry stream status
     c_status, c_count = st.columns(2)
-    c_status.metric("📡 Stream Server Status", "CONNECTED (LIVE)", delta="2000ms Latency")
-    c_count.metric("📊 Active Stream Iteration", f"Tick #{refresh_counter}")
+    c_status.metric("📡 Stream Server Status", "CONNECTED (STABLE)", delta="60s Data Sync")
+    c_count.metric("📊 Active Dashboard Minute", f"Minute Tick #{refresh_counter}")
     
     matrix_data = []
-    
     for asset in selected_assets:
         row = {"Asset Symbol": display_names[asset]}
         latest_price = 0.00000
@@ -199,7 +195,7 @@ else:
                     bot_response += f" * **Invalidation Protective Stop-Loss:** `{m['support']:.5f}`\n"
                     bot_response += f" * **Baseline Scalping Target Take-Profit:** `{m['resistance']:.5f}`"
                 else:
-                    bot_response = f"Live statistics for {name} are initializing. Give the websocket 2 seconds to synchronize and ask again."
+                    bot_response = f"Live statistics for {name} are initializing. Give the database 60 seconds to synchronize and ask again."
                 break
                 
         if not matched:
