@@ -182,26 +182,19 @@ else:
     user_query = st.chat_input("Verify active market entry parameters...")
 
     if user_query:
-        # Append query directly into active session memory
         st.session_state.chat_history.append({"role": "user", "content": user_query})
-        
         bot_response = ""
         matched = False
-        q_clean = user_query.lower().replace("/", "").replace(" ", "").replace("-", "")
+        q = user_query.lower().replace("/", "").replace(" ", "").replace("-", "")
         
-        # Upgraded fuzzy matcher strings to map user entry fields perfectly
+        # Flattened loops to prevent formatting/indentation alignment crashes
         for key, name in display_names.items():
             k_clean = key.lower().replace("=x", "").replace("-", "")
             
-            # Formulate strict linear Boolean evaluation flags to secure formatting alignment
-            is_gold = ("gold" in q_clean or "xau" in q_clean) and key == "GC=F"
-            is_silver = ("silver" in q_clean or "xag" in q_clean) and key == "SI=F"
-            is_btc = ("bitcoin" in q_clean or "btc" in q_clean) and key == "BTC-USD"
-            is_eurusd = ("eur" in q_clean and "usd" in q_clean) and key == "EURUSD=X"
-            is_gbpusd = ("gbp" in q_clean and "usd" in q_clean) and key == "GBPUSD=X"
-            is_raw_key = k_clean in q_clean
+            # Pure single-line logic conditions preventing multi-line block breakages
+            match_found = (k_clean in q) or ("gold" in q and key == "GC=F") or ("xau" in q and key == "GC=F") or ("silver" in q and key == "SI=F") or ("xag" in q and key == "SI=F") or ("bitcoin" in q and key == "BTC-USD") or ("btc" in q and key == "BTC-USD") or ("eur" in q and "usd" in q and key == "EURUSD=X") or ("gbp" in q and "usd" in q and key == "GBPUSD=X")
             
-            if is_gold or is_silver or is_btc or is_eurusd or is_gbpusd or is_raw_key:
+            if match_found:
                 matched = True
                 if key in st.session_state.analysis_vault:
                     m = st.session_state.analysis_vault[key]
@@ -216,3 +209,7 @@ else:
                     bot_response += f" * **Invalidation Protective Stop-Loss:** `{m['support']:.5f}`\n"
                     bot_response += f" * **Baseline Scalping Target Take-Profit:** `{m['resistance']:.5f}`"
                 else:
+                    bot_response = f"Live statistics for {name} are initializing. Verify that the asset checkbox in the left sidebar menu is checked, then submit your query again."
+                break
+                
+        if not matched:
