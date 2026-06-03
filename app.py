@@ -7,8 +7,8 @@ from streamlit_autorefresh import st_autorefresh
 
 # 1. APPLICATION VIEWPORT SETUP
 st.set_page_config(page_title="High-Accuracy AI Predictive Matrix", layout="wide")
-st.title("🎛️ Optimized High-Accuracy AI Global Market Dashboard")
-st.write("Utilizes stabilized relative data scaling and tuned hyperparameters to optimize win-rate metrics.")
+st.title("🎛️ Optimized AI Global Market Dashboard & Confirmation Chat")
+st.write("Combines high-accuracy technical trend matrices with an on-demand strategy confirmation engine.")
 
 # Safe automated backend updates every 30 seconds
 count = st_autorefresh(interval=30000, limit=1000, key="forex_auto_refresh")
@@ -46,7 +46,6 @@ for category, items in asset_catalog.items():
         if st.sidebar.checkbox(f"Add {display_names[item]}", value=default_checked, key=f"side_{item}"):
             selected_assets.append(item)
 
-# Optimized timeframes to secure robust training row depths
 timeframes = {
     "1 Minute": {"interval": "1m", "period": "1d"},
     "2 Minutes": {"interval": "2m", "period": "1d"},
@@ -54,7 +53,11 @@ timeframes = {
     "1 Hour": {"interval": "1h", "period": "60d"}
 }
 
-analysis_vault = {} 
+# System global storage for indicator memory
+if "analysis_vault" not in st.session_state:
+    st.session_state.analysis_vault = {}
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
 
 # 3. HIGH-ACCURACY AI MACHINE LEARNING ENGINE
 def run_ai_engine(ticker, interval, period):
@@ -90,14 +93,12 @@ def run_ai_engine(ticker, interval, period):
         df['BB_Upper'] = df['SMA_20'] + (std_dev * 2)
         df['BB_Lower'] = df['SMA_20'] - (std_dev * 2)
         
-        # --- STATIONARY FEATURE TRANSFORMATION (ACCURACY BOOST) ---
-        # Instead of raw numbers, model trains on relative percent variances
+        # --- STATIONARY FEATURE TRANSFORMATION ---
         df['Dist_SMA20'] = (df['Close'] - df['SMA_20']) / df['SMA_20']
         df['Dist_EMA50'] = (df['Close'] - df['EMA_50']) / df['EMA_50']
         df['Dist_BB_Upper'] = (df['BB_Upper'] - df['Close']) / df['Close']
         df['Dist_BB_Lower'] = (df['Close'] - df['BB_Lower']) / df['Close']
         df['MACD_Diff'] = df['MACD_Line'] - df['MACD_Signal']
-        # -----------------------------------------------------------
         
         df['Target'] = (df['Close'].shift(-1) > df['Close']).astype(int)
         df_ml = df.dropna().copy()
@@ -113,32 +114,29 @@ def run_ai_engine(ticker, interval, period):
         X_train, X_test = X.iloc[:split_idx], X.iloc[split_idx:]
         y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
         
-        # Optimized Tuned Random Forest parameters to eliminate false breakouts
         model = RandomForestClassifier(n_estimators=150, min_samples_split=5, random_state=42)
         model.fit(X_train, y_train)
         
         accuracy = model.score(X_test, y_test)
-        
-        # Real-time directional confidence assessment
         latest_row = X.iloc[[-1]]
-        pred_prob = model.predict_proba(latest_row)[0]
+        pred_prob = model.predict_proba(latest_row)
         max_prob = np.max(pred_prob)
-        raw_pred = model.predict(latest_row)[0]
+        raw_pred = model.predict(latest_row)
         
-        # Filter: If accuracy/probability is low, declare Neutral status
         if max_prob < 0.53:
             signal = "⏳ NEUTRAL"
         else:
             signal = "🚀 BUY" if raw_pred == 1 else "🩸 SELL"
         
-        if interval == "5m" and ticker not in analysis_vault:
-            analysis_vault[ticker] = {
-                "rsi": df['RSI'].iloc[-1],
-                "macd": df['MACD_Line'].iloc[-1],
-                "macd_sig": df['MACD_Signal'].iloc[-1],
-                "upper_band": df['BB_Upper'].iloc[-1],
-                "lower_band": df['BB_Lower'].iloc[-1],
-                "support": df['Low'].tail(25).min(),
+        # Save metrics dynamically to provide session context to the chat tool
+        if interval == "5m":
+            st.session_state.analysis_vault[ticker] = {
+                "signal": signal,
+                "accuracy": f"{accuracy * 100:.0f}%",
+                "rsi": float(df['RSI'].iloc[-1]),
+                "macd_cross": "Bullish" if df['MACD_Line'].iloc[-1] > df['MACD_Signal'].iloc[-1] else "Bearish",
+                "price": float(df['Close'].iloc[-1]),
+                "support": float(df['Low'].tail(25).min()),
                 "resistance": df['High'].tail(25).max()
             }
             
@@ -150,8 +148,6 @@ def run_ai_engine(ticker, interval, period):
 if not selected_assets:
     st.warning("Please check at least one asset box in the left sidebar menu to compute market data.")
 else:
-    st.success(f"⚡ **Stable Streaming Engine Active**: Automated screen refresh loops triggered smoothly every 30s. Iteration Count: `{count}`")
-    
     matrix_data = []
     
     with st.spinner("Syncing latest live data streams..."):
@@ -175,30 +171,40 @@ else:
     st.subheader("⚡ Optimized High-Accuracy AI Technical Signal Matrix")
     st.dataframe(result_df, use_container_width=True, hide_index=True)
 
-    # 5. TECHNICAL SUMMARY BLOCKS
+    # 5. INTEGRATED LIVE AI CONFIRMATION CHAT WINDOW
     st.markdown("---")
-    st.subheader("📊 Advanced Indicator Diagnostics (5-Minute Base Chart Profile)")
-    
-    for asset in selected_assets:
-        if asset in analysis_vault:
-            metrics = analysis_vault[asset]
-            macd_status = "📈 Bullish Cross" if metrics["macd"] > metrics["macd_sig"] else "📉 Bearish Cross"
-            
-            with st.expander(f"👁️ Real-Time Profile: {display_names[asset]}"):
-                c1, c2, c3 = st.columns(3)
-                
-                with c1:
-                    st.markdown("**📉 Bollinger Channels**")
-                    st.write(f"* Upper BB Envelope: `{metrics['upper_band']:.5f}`")
-                    st.write(f"* Lower BB Envelope: `{metrics['lower_band']:.5f}`")
-                
-                with c2:
-                    st.markdown("**⚡ Momentum Divergence**")
-                    st.write(f"* MACD Convergence Status: `{macd_status}`")
-                    st.write(f"* MACD Line Value: `{metrics['macd']:.6f}`")
-                    
-                with c3:
-                    st.markdown("**🚧 Structural Horizons**")
-                    st.write(f"* Relative Strength Index (RSI): `{metrics['rsi']:.1f}`")
-                    st.write(f"* Local Floor Support: `{metrics['support']:.5f}`")
-                    st.write(f"* Local Ceiling Resistance: `{metrics['resistance']:.5f}`")
+    st.subheader("💬 AI Strategy Confirmation Chat Room")
+    st.write("Type an asset name or strategic query below to receive instant confirmation parameters based on the live data table.")
+
+    # Render previous conversation blocks
+    for message in st.session_state.chat_history:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    # User chat entry interface
+    if user_query := st.chat_input("e.g., Verify XAU/USD direction or ask for stop loss setup..."):
+        # Display user question instantly
+        with st.chat_message("user"):
+            st.markdown(user_query)
+        st.session_state.chat_history.append({"role": "user", "content": user_query})
+
+        # Process automated response logic using the current live application data state
+        bot_response = "I am processing your confirmation request based on live technical metrics. Let me scan the selected parameters... \n\n"
+        matched = False
+        
+        for key, name in display_names.items():
+            if name.lower() in user_query.lower() or key.lower() in user_query.lower() or (len(name.split()[0]) > 2 and name.split()[0].lower() in user_query.lower()):
+                matched = True
+                if key in st.session_state.analysis_vault:
+                    metrics = st.session_state.analysis_vault[key]
+                    bot_response += f"📊 **Live Analysis Confirmation for {name}:**\n"
+                    bot_response += f"* **Current AI Matrix Signal (5M):** `{metrics['signal']}` (Backtest Model Accuracy: {metrics['accuracy']})\n"
+                    bot_response += f"* **Live Asset Price:** `{metrics['price']:.5f}`\n"
+                    bot_response += f"* **RSI Over-Extension Gauge:** `{metrics['rsi']:.1f}` (Market is {'Overbought' if metrics['rsi'] > 70 else 'Oversold' if metrics['rsi'] < 30 else 'Neutral Momentum'})\n"
+                    bot_response += f"* **MACD Trend State:** `{metrics['macd_cross']} Momentum` \n"
+                    bot_response += f"⚠️ **Risk Configuration Recommendation:** Place an validation protective Stop Loss right below the structural floor at `{metrics['support']:.5f}` or near the target ceiling line at `{metrics['resistance']:.5f}`."
+                else:
+                    bot_response += f"Live metrics for {name} are initializing. Please select this asset in the sidebar grid first and tap refresh to feed the active memory buffer."
+                break
+        
+        if not matched:
