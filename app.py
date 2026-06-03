@@ -187,14 +187,25 @@ else:
         matched = False
         q = user_query.lower().replace("/", "").replace(" ", "").replace("-", "")
         
-        # Flattened loops to prevent formatting/indentation alignment crashes
+        # Safe flat evaluation loop mapping keywords cleanly
         for key, name in display_names.items():
             k_clean = key.lower().replace("=x", "").replace("-", "")
             
-            # Pure single-line logic conditions preventing multi-line block breakages
-            match_found = (k_clean in q) or ("gold" in q and key == "GC=F") or ("xau" in q and key == "GC=F") or ("silver" in q and key == "SI=F") or ("xag" in q and key == "SI=F") or ("bitcoin" in q and key == "BTC-USD") or ("btc" in q and key == "BTC-USD") or ("eur" in q and "usd" in q and key == "EURUSD=X") or ("gbp" in q and "usd" in q and key == "GBPUSD=X")
-            
-            if match_found:
+            # Pure matching triggers array
+            triggers = [k_clean]
+            if key == "GC=F":
+                triggers.extend(["gold", "xau"])
+            if key == "SI=F":
+                triggers.extend(["silver", "xag"])
+            if key == "BTC-USD":
+                triggers.extend(["bitcoin", "btc"])
+            if key == "EURUSD=X":
+                triggers.extend(["eurusd", "eur"])
+            if key == "GBPUSD=X":
+                triggers.extend(["gbpusd", "gbp"])
+
+            # Check if any keyword matches user query
+            if any(t in q for t in triggers):
                 matched = True
                 if key in st.session_state.analysis_vault:
                     m = st.session_state.analysis_vault[key]
@@ -211,5 +222,3 @@ else:
                 else:
                     bot_response = f"Live statistics for {name} are initializing. Verify that the asset checkbox in the left sidebar menu is checked, then submit your query again."
                 break
-                
-        if not matched:
