@@ -53,7 +53,7 @@ timeframes = {
     "1 Hour": {"interval": "1h", "period": "60d"}
 }
 
-# System global storage for indicator memory
+# Persistent cross-refresh session state allocation containers
 if "analysis_vault" not in st.session_state:
     st.session_state.analysis_vault = {}
 if "chat_history" not in st.session_state:
@@ -128,17 +128,16 @@ def run_ai_engine(ticker, interval, period):
         else:
             signal = "🚀 BUY" if raw_pred == 1 else "🩸 SELL"
         
-        # Save metrics dynamically to provide session context to the chat tool
-        if interval == "5m":
-            st.session_state.analysis_vault[ticker] = {
-                "signal": signal,
-                "accuracy": f"{accuracy * 100:.0f}%",
-                "rsi": float(df['RSI'].iloc[-1]),
-                "macd_cross": "Bullish" if df['MACD_Line'].iloc[-1] > df['MACD_Signal'].iloc[-1] else "Bearish",
-                "price": float(df['Close'].iloc[-1]),
-                "support": float(df['Low'].tail(25).min()),
-                "resistance": float(df['High'].tail(25).max())
-            }
+        # Keep internal session database fully populated
+        st.session_state.analysis_vault[ticker] = {
+            "signal": signal,
+            "accuracy": f"{accuracy * 100:.0f}%",
+            "rsi": float(df['RSI'].iloc[-1]),
+            "macd_cross": "Bullish" if df['MACD_Line'].iloc[-1] > df['MACD_Signal'].iloc[-1] else "Bearish",
+            "price": float(df['Close'].iloc[-1]),
+            "support": float(df['Low'].tail(25).min()),
+            "resistance": float(df['High'].tail(25).max())
+        }
             
         return f"{signal} ({accuracy * 100:.0f}% Acc)", accuracy, df['Close'].iloc[-1]
     except Exception as e:
@@ -174,41 +173,51 @@ else:
     # 5. INTEGRATED LIVE AI CONFIRMATION CHAT WINDOW
     st.markdown("---")
     st.subheader("💬 AI Strategy Confirmation Chat Room")
-    st.write("Type an asset name or strategic query below to receive instant confirmation parameters based on the live data table.")
+    st.write("Type an asset name (e.g., 'gold', 'bitcoin', 'eurusd') to unlock confirmation logic maps.")
 
-    # Render previous conversation blocks
-    for message in st.session_state.chat_history:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+    # Container to hold chat messages so they display reliably in order
+    chat_container = st.container()
 
-    # User chat entry interface
-    if user_query := st.chat_input("e.g., Verify XAU/USD direction or ask for stop loss setup..."):
-        with st.chat_message("user"):
-            st.markdown(user_query)
+    # User chat entry interface setup
+    user_query = st.chat_input("Verify active market entry parameters...")
+
+    if user_query:
+        # Append query directly into active session memory
         st.session_state.chat_history.append({"role": "user", "content": user_query})
-
+        
         bot_response = ""
         matched = False
+        query_clean = user_query.lower().replace("/", "").replace(" ", "").replace("-", "")
         
+        # Upgraded fuzzy matcher strings to map user entry fields perfectly
         for key, name in display_names.items():
-            if key.lower() in user_query.lower() or "gold" in user_query.lower() and key == "GC=F" or "bitcoin" in user_query.lower() and key == "BTC-USD":
+            key_clean = key.lower().replace("=x", "").replace("-", "")
+            
+            # Match rules checking system
+            is_match = (
+                key_clean in query_clean or 
+                "gold" in query_clean and key == "GC=F" or 
+                "xau" in query_clean and key == "GC=F" or
+                "silver" in query_clean and key == "SI=F" or
+                "xag" in query_clean and key == "SI=F" or
+                "bitcoin" in query_clean and key == "BTC-USD" or
+                "btc" in query_clean and key == "BTC-USD" or
+                "eur" in query_clean and "usd" in query_clean and key == "EURUSD=X" or
+                "gbp" in query_clean and "usd" in query_clean and key == "GBPUSD=X"
+            )
+            
+            if is_match:
                 matched = True
                 if key in st.session_state.analysis_vault:
-                    metrics = st.session_state.analysis_vault[key]
-                    status_text = 'Overbought' if metrics['rsi'] > 70 else 'Oversold' if metrics['rsi'] < 30 else 'Neutral Momentum'
+                    m = st.session_state.analysis_vault[key]
+                    status_text = 'Overbought' if m['rsi'] > 70 else 'Oversold' if m['rsi'] < 30 else 'Neutral Momentum'
                     
-                    bot_response = f"📊 **Live Analysis Confirmation for {name}:**\n\n"
-                    bot_response += f"* **Current AI Matrix Signal (5M):** `{metrics['signal']}` (Backtest Model Accuracy: {metrics['accuracy']})\n"
-                    bot_response += f"* **Live Asset Price:** `{metrics['price']:.5f}`\n"
-                    bot_response += f"* **RSI Over-Extension Gauge:** `{metrics['rsi']:.1f}` ({status_text})\n"
-                    bot_response += f"* **MACD Trend State:** `{metrics['macd_cross']} Momentum` \n\n"
-                    bot_response += f"⚠️ **Risk Configuration Recommendation:** Place a protective Stop Loss right below the structural floor at `{metrics['support']:.5f}` or near the target ceiling line at `{metrics['resistance']:.5f}`."
+                    bot_response = f"📊 **Live Confirmation Blueprint for {name}:**\n\n"
+                    bot_response += f"* **AI Direction Trend Recommendation:** `{m['signal']}` (Calculated over 150 optimized baseline indices)\n"
+                    bot_response += f"* **Live Execution Quote:** `{m['price']:.5f}`\n"
+                    bot_response += f"* **Oscillator Wave Status:** RSI is at `{m['rsi']:.1f}` ({status_text})\n"
+                    bot_response += f"* **Momentum Struct:** MACD is showcasing a `{m['macd_cross']}` direction phase.\n\n"
+                    bot_response += f"🚧 **Definitive Order Management Bounds:**\n"
+                    bot_response += f" * **Invalidation Protective Stop-Loss:** `{m['support']:.5f}`\n"
+                    bot_response += f" * **Baseline Scalping Target Take-Profit:** `{m['resistance']:.5f}`"
                 else:
-                    bot_response = f"Live metrics for {name} are initializing. Please make sure this asset box is checked in the left sidebar and wait a few seconds for data collection."
-                break
-        
-        if not matched:
-            bot_response = "🔮 **Global Market Strategy Context:** To request an active entry verification, include an explicit asset keyword from your active tracker pool (e.g., 'XAU/USD' or 'EUR/USD'). I will cross-reference the live machine learning outputs to calculate immediate structural stop-loss and invalidation levels for you."
-
-        with st.chat_message("assistant"):
-            st.markdown(bot_response)
