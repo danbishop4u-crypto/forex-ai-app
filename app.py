@@ -137,7 +137,7 @@ def run_ai_engine(ticker, interval, period):
                 "macd_cross": "Bullish" if df['MACD_Line'].iloc[-1] > df['MACD_Signal'].iloc[-1] else "Bearish",
                 "price": float(df['Close'].iloc[-1]),
                 "support": float(df['Low'].tail(25).min()),
-                "resistance": df['High'].tail(25).max()
+                "resistance": float(df['High'].tail(25).max())
             }
             
         return f"{signal} ({accuracy * 100:.0f}% Acc)", accuracy, df['Close'].iloc[-1]
@@ -183,28 +183,32 @@ else:
 
     # User chat entry interface
     if user_query := st.chat_input("e.g., Verify XAU/USD direction or ask for stop loss setup..."):
-        # Display user question instantly
         with st.chat_message("user"):
             st.markdown(user_query)
         st.session_state.chat_history.append({"role": "user", "content": user_query})
 
-        # Process automated response logic using the current live application data state
-        bot_response = "I am processing your confirmation request based on live technical metrics. Let me scan the selected parameters... \n\n"
+        bot_response = ""
         matched = False
         
         for key, name in display_names.items():
-            if name.lower() in user_query.lower() or key.lower() in user_query.lower() or (len(name.split()[0]) > 2 and name.split()[0].lower() in user_query.lower()):
+            if key.lower() in user_query.lower() or "gold" in user_query.lower() and key == "GC=F" or "bitcoin" in user_query.lower() and key == "BTC-USD":
                 matched = True
                 if key in st.session_state.analysis_vault:
                     metrics = st.session_state.analysis_vault[key]
-                    bot_response += f"📊 **Live Analysis Confirmation for {name}:**\n"
+                    status_text = 'Overbought' if metrics['rsi'] > 70 else 'Oversold' if metrics['rsi'] < 30 else 'Neutral Momentum'
+                    
+                    bot_response = f"📊 **Live Analysis Confirmation for {name}:**\n\n"
                     bot_response += f"* **Current AI Matrix Signal (5M):** `{metrics['signal']}` (Backtest Model Accuracy: {metrics['accuracy']})\n"
                     bot_response += f"* **Live Asset Price:** `{metrics['price']:.5f}`\n"
-                    bot_response += f"* **RSI Over-Extension Gauge:** `{metrics['rsi']:.1f}` (Market is {'Overbought' if metrics['rsi'] > 70 else 'Oversold' if metrics['rsi'] < 30 else 'Neutral Momentum'})\n"
-                    bot_response += f"* **MACD Trend State:** `{metrics['macd_cross']} Momentum` \n"
-                    bot_response += f"⚠️ **Risk Configuration Recommendation:** Place an validation protective Stop Loss right below the structural floor at `{metrics['support']:.5f}` or near the target ceiling line at `{metrics['resistance']:.5f}`."
+                    bot_response += f"* **RSI Over-Extension Gauge:** `{metrics['rsi']:.1f}` ({status_text})\n"
+                    bot_response += f"* **MACD Trend State:** `{metrics['macd_cross']} Momentum` \n\n"
+                    bot_response += f"⚠️ **Risk Configuration Recommendation:** Place a protective Stop Loss right below the structural floor at `{metrics['support']:.5f}` or near the target ceiling line at `{metrics['resistance']:.5f}`."
                 else:
-                    bot_response += f"Live metrics for {name} are initializing. Please select this asset in the sidebar grid first and tap refresh to feed the active memory buffer."
+                    bot_response = f"Live metrics for {name} are initializing. Please make sure this asset box is checked in the left sidebar and wait a few seconds for data collection."
                 break
         
         if not matched:
+            bot_response = "🔮 **Global Market Strategy Context:** To request an active entry verification, include an explicit asset keyword from your active tracker pool (e.g., 'XAU/USD' or 'EUR/USD'). I will cross-reference the live machine learning outputs to calculate immediate structural stop-loss and invalidation levels for you."
+
+        with st.chat_message("assistant"):
+            st.markdown(bot_response)
