@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Combination Calculator</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 30px;
+            width: 90%;
+            max-width: 450px;
+            text-align: center;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        h1 { color: #58a6ff; font-size: 1.5rem; margin-bottom: 20px; }
+        .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        input {
+            flex: 1;
+            padding: 12px;
+            background-color: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: white;
+            font-size: 1rem;
+            text-transform: uppercase;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+        input:focus { border-color: #58a6ff; outline: none; }
+        button {
+            padding: 12px 24px;
+            background-color: #238636;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover { background-color: #2ea043; }
+        .result-box {
+            margin-top: 25px;
+            padding: 20px;
+            background-color: #21262d;
+            border-radius: 8px;
+            border: 1px dashed #30363d;
+            min-height: 50px;
+        }
+        .output-label { font-size: 0.9rem; color: #8b949e; text-transform: uppercase; }
+        .output-value {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-top: 5px;
+            transition: color 0.3s;
+        }
+        .color-R { color: #ff453a; }
+        .color-G { color: #32d74b; }
+        .color-error { color: #8b949e; font-size: 1.2rem; }
+        .quick-tags { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 15px; }
+        .tag {
+            background-color: #21262d;
+            border: 1px solid #30363d;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+        .tag:hover { border-color: #8b949e; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Color Combination Rule App</h1>
+    
+    <div class="input-group">
+        <input type="text" id="comboInput" placeholder="Enter 3 letters (e.g., RGR)" maxlength="3">
+        <button onclick="processColors()">Calculate</button>
+    </div>
+
+    <div class="quick-tags">
+        <span class="tag" onclick="quickFill('RRG')">RRG</span>
+        <span class="tag" onclick="quickFill('RGR')">RGR</span>
+        <span class="tag" onclick="quickFill('GRG')">GRG</span>
+        <span class="tag" onclick="quickFill('GRR')">GRR</span>
+        <span class="tag" onclick="quickFill('GGR')">GGR</span>
+        <span class="tag" onclick="quickFill('GGG')">GGG</span>
+        <span class="tag" onclick="quickFill('RRR')">RRR</span>
+    </div>
+
+    <div class="result-box">
+        <div class="output-label">Output Result</div>
+        <div id="outputDisplay" class="output-value">—</div>
+    </div>
+</div>
+
+<script>
+    const rules = {
+        "RRG": "G",
+        "RGR": "G",
+        "GRG": "G",
+        "GRR": "R",
+        "GGR": "R",
+        "GGG": "R",
+        "RRR": "G"
+    };
+
+    function processColors() {
+        const inputEl = document.getElementById('comboInput');
+        const outputEl = document.getElementById('outputDisplay');
+        const val = inputEl.value.toUpperCase().trim();
+
+        if (rules.hasOwnProperty(val)) {
+            const result = rules[val];
+            outputEl.textContent = result;
+            outputEl.className = `output-value color-${result}`;
+        } else {
+            outputEl.textContent = "Invalid Code";
+            outputEl.className = "output-value color-error";
+        }
+    }
+
+    function quickFill(code) {
+        document.getElementById('comboInput').value = code;
+        processColors();
+    }
+
+    // Allow calculation by hitting the Enter key
+    document.getElementById('comboInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') processColors();
+    });
+</script>
+
+</body>
+</html>
